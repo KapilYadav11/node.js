@@ -1,16 +1,28 @@
-const express  = require('express');
+const express = require('express');
 const jwt = require('jsonwebtoken');
-
-const JWT_SECRET = "lkjhgfdsapoiuytrewwsdfgvcxvbn";
+const JWT_SECRET = "lkjhgfdsapoiuytrewq"
 
 const app = express();
-app.use(express.json());
-const users = []
+app.use(express.json())
 
+const users = [];
 
+const authMiddleware = async(req, res, next)=>{
+    const token  = req.headers.token;
+    const decodedData = jwt.verify(token, JWT_SECRET);
+    if(decodedData.username){
+        next()
+    } else{
+        res.json({
+            message:"You are not logged in"
+        })
+    }
+     
+}
 
 app.post("/signup", (req, res)=>{
-
+    
+    
     const username = req.body.username;
     const password = req.body.password;
 
@@ -18,56 +30,70 @@ app.post("/signup", (req, res)=>{
         username: username,
         password: password
     })
-    console.log(users)
-    res.json({
-        message:"User signed up successfully!"
-    })
 
-});
+    res.json({
+        message:"You are signed up"
+    })
+    
+    
+
+})
+app.get("/", (req, res)=>{
+    res.sendFile(__dirname + "/public/index.html")
+})
 
 app.post("/signin", (req, res)=>{
-
     const username = req.body.username;
     const password = req.body.password;
 
-    const user = users.find(user => user.username === username && user.password === password);  
-        
-        if(user){
-            const token = jwt.sign({
-                username: username
-            }, JWT_SECRET)
-           // user.token = token;
-            res.send({
-                token
-            })
+    let foundUser = null;
+    for(let i = 0; i<users.length; i++){
+       if(users[i].username === username && users[i].password === password){
+        foundUser = users[i]
+       }
+    }
 
-        }else{
-            res.status(403).send({
-                message:"Invalid username and password"
-            })
-        }
-        console.log(user)
-    })
-
-
-app.get("/me", (req, res)=>{
-    const token  = req.headers.token;
-    const decodedInformation = jwt.verify(token, JWT_SECRET)
-    const username = decodedInformation.username;
-    const user = users.find(user => user.token === token);
-    if(user){
+    if(!foundUser){
         res.send({
-            username: user.username
+            message:"Credentials are incorrect"
         })
     } else{
-        res.status(401).send({
-            message:"Unautorized"
+        const token = jwt.sign({
+            username
+        }, JWT_SECRET)
+
+         res.json({
+        token:token
+    })
+    }
+   
+
+})
+
+app.get("/me", authMiddleware, (req, res)=>{
+    const token = req.headers.token;
+    console.log(token);
+    
+
+    const decodedData = jwt.verify(token, JWT_SECRET);
+    if(decodedData.username){
+        let foundUser = null;
+        for(let i = 0; i<users.length; i++){
+            if(users[i].username === decodedData.username){
+                foundUser = users[i]
+            }
+
+        }
+        res.json({
+            username:foundUser.username,
+            password:foundUser.password
         })
     }
-})    
 
-
+})
 
 app.listen(3000, ()=>{
-    console.log("Server is running on the port")
+    console.log("server is on 3000 port");
+    
+    
 })
